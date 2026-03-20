@@ -5,7 +5,7 @@ from email import message_from_string
 from email.policy import default
 
 INPUT_FILE = "../dataset/emails.csv"
-OUTPUT_FILE = "./enron_structured.jsonl"
+OUTPUT_FILE = "./enron_structured.json"
 
 
 # ----------------------------
@@ -93,70 +93,75 @@ def extract_attachments(msg):
 
 
 # ----------------------------
-# Main Pipeline
+# Main Pipeline (Streaming)
 # ----------------------------
 
 df = pd.read_csv(INPUT_FILE)
-print(df.columns)
+total = len(df)
 
-emails = []
-
-for i, row in enumerate(df.itertuples(index=False)):
-
-    file_path = row.file
-    raw_message = row.message
-
-    try:
-
-        msg = message_from_string(raw_message, policy=default)
-
-        employee, folder, email_id = extract_path_metadata(file_path)
-
-        headers = {}
-        for key, value in msg.items():
-            headers[key] = str(value)
-
-        body = extract_body(msg)
-        attachments = extract_attachments(msg)
-
-        email_record = {
-
-            "file_path": file_path,
-            "employee": employee,
-            "folder": folder,
-            "email_id": email_id,
-
-            "message_id": msg.get("Message-ID"),
-            "date": msg.get("Date"),
-            "subject": msg.get("Subject"),
-            "from": msg.get("From"),
-            "to": normalize_email_field(msg.get("To")),
-            "cc": normalize_email_field(msg.get("Cc")),
-            "bcc": normalize_email_field(msg.get("Bcc")),
-            "reply_to": msg.get("Reply-To"),
-            "in_reply_to": msg.get("In-Reply-To"),
-            "references": msg.get("References"),
-
-            "body": body,
-            "body_length": len(body),
-
-            "attachments": attachments,
-            "attachment_count": len(attachments),
-
-            "headers": headers
-        }
-
-        emails.append(email_record)
-
-    except Exception as e:
-        print(f"Error processing row {i}: {e}")
-        continue
-
-    if i == 60:   # just for testing
-        break
-
-
-# write full JSON list
 with open(OUTPUT_FILE, "w") as outfile:
-    json.dump(emails, outfile, indent=2)
-    
+
+    outfile.write("[\n")
+
+    first = True
+
+    for i, row in enumerate(df.itertuples(index=False)):
+
+        file_path = row.file
+        raw_message = row.message
+
+        try:
+
+            msg = message_from_string(raw_message, policy=default)
+
+            employee, folder, email_id = extract_path_metadata(file_path)
+
+            headers = {}
+            for key, value in msg.items():
+                headers[key] = str(value)
+
+            body = extract_body(msg)
+            attachments = extract_attachments(msg)
+
+            email_record = {
+
+                "file_path": file_path,
+                "employee": employee,
+                "folder": folder,
+                "email_id": email_id,
+
+                "message_id": msg.get("Message-ID"),
+                "date": msg.get("Date"),
+                "subject": msg.get("Subject"),
+                "from": msg.get("From"),
+                "to": normalize_email_field(msg.get("To")),
+                "cc": normalize_email_field(msg.get("Cc")),
+                "bcc": normalize_email_field(msg.get("Bcc")),
+                "reply_to": msg.get("Reply-To"),
+                "in_reply_to": msg.get("In-Reply-To"),
+                "references": msg.get("References"),
+
+                "body": body,
+                "body_length": len(body),
+
+                "attachments": attachments,
+                "attachment_count": len(attachments),
+
+                "headers": headers
+            }
+
+            if not first:
+                outfile.write(",\n")
+
+            json.dump(email_record, outfile)
+
+            first = False
+
+        except Exception as e:
+            print(f"Error processing row {i}: {e}")
+            continue
+
+        if i % (total // 10) == 0:
+            print(f"Processed {i}/{total} emails")
+
+    outfile.write("\n]")
