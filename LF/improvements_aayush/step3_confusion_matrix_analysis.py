@@ -24,8 +24,9 @@ sys.path.insert(0, os.path.dirname(__file__))
 # Just point it at the same CSV and it re-runs predictions internally.
 # ─────────────────────────────────────────────────────────────────────
 
-INPUT_FILE   = "/Users/chandan/Desktop/NLP/Golden Dataset - 300 rows.xlsx - Batch 3.csv"
-OUTPUT_FILE  = "/Users/chandan/Desktop/NLP/Step3_Error_Analysis.xlsx"
+INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/dataset/Golden Dataset - 300 rows.xlsx"
+OUTPUT_FILE = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step3_Error_Analysis.xlsx"
+
 
 ABSTAIN      = None
 URGENT       = "URGENT"
@@ -133,7 +134,8 @@ def run_error_analysis():
     elif os.path.exists(INPUT_FILE):
         print("Weighted output not found — loading raw CSV and using simple predictions.")
         print("Run step1_step2_weighted_lfs.py first for best results.\n")
-        df = pd.read_csv(INPUT_FILE)
+        dfs = pd.read_excel(INPUT_FILE, sheet_name=None)
+        df = pd.concat(dfs.values(), ignore_index=True)
         # Fallback: use a trivial baseline so analysis still runs
         df['Predicted Label'] = "INFORMATION"
     else:

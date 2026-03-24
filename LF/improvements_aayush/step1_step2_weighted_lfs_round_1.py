@@ -24,8 +24,9 @@ from collections import defaultdict
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
-INPUT_FILE  = "/Users/chandan/Desktop/NLP/Golden Dataset - 300 rows.xlsx - Batch 3.csv"
-OUTPUT_FILE = "/Users/chandan/Desktop/NLP/Batch_Weighted_LF_Results.xlsx"
+INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/dataset/Golden Dataset - 300 rows.xlsx"
+OUTPUT_FILE = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Batch_Weighted_LF_Results.xlsx"
+
 
 URGENT      = "URGENT"
 ACTION      = "ACTION"
@@ -371,7 +372,8 @@ def run_pipeline():
         print(f"Error: File not found at {INPUT_FILE}")
         return
 
-    df = pd.read_csv(INPUT_FILE)
+    dfs = pd.read_excel(INPUT_FILE, sheet_name=None)
+    df = pd.concat(dfs.values(), ignore_index=True)
 
     # Strip illegal Excel chars
     ILLEGAL_RE = re.compile(r'[\000-\010]|[\013-\014]|[\016-\037]')
