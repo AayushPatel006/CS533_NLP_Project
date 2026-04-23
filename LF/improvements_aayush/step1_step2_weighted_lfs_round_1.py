@@ -24,7 +24,7 @@ from collections import defaultdict
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
-INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/dataset/Golden Dataset - 300 rows.xlsx"
+INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/dataset/Golden Dataset - 300 rows refined.xlsx"
 OUTPUT_FILE = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Batch_Weighted_LF_Results.xlsx"
 
 

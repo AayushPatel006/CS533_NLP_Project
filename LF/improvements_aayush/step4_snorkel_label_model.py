@@ -47,8 +47,8 @@ except ImportError:
 # ─────────────────────────────────────────────
 # Update INPUT_FILE to point to your dataset.
 # The file can be a CSV or Excel — adjust the read call in run_snorkel_pipeline() below.
-INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/dataset/Golden Dataset - 300 rows.xlsx"
-OUTPUT_FILE = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/Step4_Snorkel_Results.xlsx"
+INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/dataset/Golden Dataset - 300 rows refined.xlsx"
+OUTPUT_FILE = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/Step4_Snorkel_Results_2.xlsx"
 
 # Snorkel integer class constants
 URGENT_L      = 0

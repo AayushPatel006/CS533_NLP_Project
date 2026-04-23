@@ -34,8 +34,8 @@ from sklearn.metrics import classification_report, confusion_matrix
 # ─────────────────────────────────────────────
 # CONFIG — update these paths
 # ─────────────────────────────────────────────
-SNORKEL_OUTPUT  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step4_Snorkel_Results.xlsx"
-RESULTS_FILE    = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step5_BERT_Results.xlsx"
+SNORKEL_OUTPUT  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step4_Snorkel_Results/Step4_Snorkel_Results_1.xlsx"
+RESULTS_FILE    = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step5_BERT_Results_1.xlsx"
 BERT_OUTPUT_DIR = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/bert_model"
 
 LABEL2ID = {"URGENT": 0, "ACTION": 1, "INFORMATION": 2}

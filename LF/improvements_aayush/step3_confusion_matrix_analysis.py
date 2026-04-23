@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 # Just point it at the same CSV and it re-runs predictions internally.
 # ─────────────────────────────────────────────────────────────────────
 
-INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/dataset/Golden Dataset - 300 rows.xlsx"
+INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step3_Error_Analysis_round_1.xlsx"
 OUTPUT_FILE = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step3_Error_Analysis.xlsx"
 
 
