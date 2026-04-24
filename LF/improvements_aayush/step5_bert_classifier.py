@@ -17,7 +17,7 @@ THE SOLUTION:
   294 gold labels is sufficient for BERT fine-tuning — this is standard
   practice for domain-specific classification with small labelled sets.
 
-TWO MODELS:
+TWO MODELS:yes 
   1. TF-IDF + Logistic Regression — 5-fold CV on gold labels (fast baseline)
   2. BERT fine-tuned — 5-fold CV on gold labels with weighted loss
 """
@@ -34,8 +34,8 @@ from sklearn.metrics import classification_report, confusion_matrix
 # ─────────────────────────────────────────────
 # CONFIG — update these paths
 # ─────────────────────────────────────────────
-SNORKEL_OUTPUT  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step4_Snorkel_Results/Step4_Snorkel_Results_1.xlsx"
-RESULTS_FILE    = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step5_BERT_Results_1.xlsx"
+SNORKEL_OUTPUT  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step4_Snorkel_Results/Step4_Snorkel_Results_2.xlsx"
+RESULTS_FILE    = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step5_BERT_Results_2_2.xlsx"
 BERT_OUTPUT_DIR = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/bert_model"
 
 LABEL2ID = {"URGENT": 0, "ACTION": 1, "INFORMATION": 2}
@@ -70,11 +70,15 @@ def load_data():
     
     # Report why Snorkel soft labels are not used
     if 'P_URGENT' in df.columns:
+        mean_p_by_class = {}
         print("\n  Snorkel P_URGENT by actual class (confirming soft labels are uninformative):")
         for cls in ['URGENT','ACTION','INFORMATION']:
             mean_p = df[df['gold']==cls]['P_URGENT'].mean()
+            mean_p_by_class[cls] = mean_p
             print(f"    Actual {cls:<12}: mean P_URGENT = {mean_p:.3f}")
-        print("  → All three classes have nearly identical P_URGENT ≈ 0.24")
+        mean_values = list(mean_p_by_class.values())
+        print(f"  → All three classes have similarly low P_URGENT "
+              f"({min(mean_values):.3f}–{max(mean_values):.3f})")
         print("  → Using GOLD labels for training instead.\n")
     return df
 
@@ -278,17 +282,18 @@ def run_bert_classifier(df):
         # Evaluate this fold
         model.eval()
         with torch.no_grad():
+            val_offset = 0
             for batch in val_dl:
                 input_ids      = batch['input_ids'].to(device)
                 attention_mask = batch['attention_mask'].to(device)
                 outputs = model(input_ids=input_ids, attention_mask=attention_mask)
                 probs = torch.softmax(outputs.logits, dim=-1).cpu().numpy()
                 preds = probs.argmax(axis=1)
-                for i, global_idx in enumerate(val_idx[
-                    list(range(len(probs)))
-                ] if False else val_idx):
-                    all_preds[global_idx] = ID2LABEL[preds[i] if i < len(preds) else 0]
-                    all_probs[global_idx] = probs[i] if i < len(probs) else [0.33,0.33,0.34]
+                batch_val_idx = val_idx[val_offset:val_offset + len(preds)]
+                for i, global_idx in enumerate(batch_val_idx):
+                    all_preds[global_idx] = ID2LABEL[preds[i]]
+                    all_probs[global_idx] = probs[i]
+                val_offset += len(preds)
 
         del model
         if torch.cuda.is_available():
