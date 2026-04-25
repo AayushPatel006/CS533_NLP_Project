@@ -20,12 +20,21 @@ import pandas as pd
 import re
 import os
 from collections import defaultdict
+from pathlib import Path
 
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
-INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/dataset/Golden Dataset - 300 rows refined.xlsx"
-OUTPUT_FILE = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Batch_Weighted_LF_Results_round_3_2.xlsx"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+INPUT_FILE = PROJECT_ROOT / "dataset" / "Golden Dataset - 300 rows refined.xlsx"
+OUTPUT_FILE = (
+    PROJECT_ROOT
+    / "LF"
+    / "improvements_aayush"
+    / "results"
+    / "Weighted_LF"
+    / "Batch_Weighted_LF_Results_round_3_portable.xlsx"
+)
 
 URGENT      = "URGENT"
 ACTION      = "ACTION"
@@ -966,6 +975,7 @@ def predict_label(row):
 # ─────────────────────────────────────────────
 
 def run_pipeline():
+    os.makedirs(OUTPUT_FILE.parent, exist_ok=True)
     if not os.path.exists(INPUT_FILE):
         print(f"Error: File not found at {INPUT_FILE}")
         return

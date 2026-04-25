@@ -12,6 +12,7 @@ Outputs:
 import pandas as pd
 import re
 import os
+from pathlib import Path
 
 # ─────────────────────────────────────────────────────────────────────
 # IMPORT the predict function from your Step 1/2 file.
@@ -24,8 +25,23 @@ sys.path.insert(0, os.path.dirname(__file__))
 # Just point it at the same CSV and it re-runs predictions internally.
 # ─────────────────────────────────────────────────────────────────────
 
-INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step3_Error_Analysis_round_1.xlsx"
-OUTPUT_FILE = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step3_Error_Analysis.xlsx"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+INPUT_FILE = (
+    PROJECT_ROOT
+    / "LF"
+    / "improvements_aayush"
+    / "results"
+    / "Weighted_LF"
+    / "Batch_Weighted_LF_Results_round_3_portable.xlsx"
+)
+OUTPUT_FILE = (
+    PROJECT_ROOT
+    / "LF"
+    / "improvements_aayush"
+    / "results"
+    / "Step3_Error_Analysis"
+    / "Step3_Error_Analysis_portable.xlsx"
+)
 
 
 ABSTAIN      = None
@@ -124,22 +140,13 @@ def get_top_errors(df, actual_col, predicted_col, actual_class, predicted_as, n=
 # ─────────────────────────────────────────────────────────────────────
 
 def run_error_analysis():
-    # ── Load the OUTPUT from your step1/step2 script ──
-    # If that file doesn't exist yet, fall back to re-running predictions inline.
-    weighted_output = OUTPUT_FILE.replace("Step3_Error_Analysis", "Batch_Weighted_LF_Results").replace(".xlsx", ".xlsx")
+    os.makedirs(OUTPUT_FILE.parent, exist_ok=True)
 
-    if os.path.exists(weighted_output):
-        print(f"Loading weighted LF results from: {weighted_output}")
-        df = pd.read_excel(weighted_output)
-    elif os.path.exists(INPUT_FILE):
-        print("Weighted output not found — loading raw CSV and using simple predictions.")
-        print("Run step1_step2_weighted_lfs.py first for best results.\n")
-        dfs = pd.read_excel(INPUT_FILE, sheet_name=None)
-        df = pd.concat(dfs.values(), ignore_index=True)
-        # Fallback: use a trivial baseline so analysis still runs
-        df['Predicted Label'] = "INFORMATION"
+    if os.path.exists(INPUT_FILE):
+        print(f"Loading weighted LF results from: {INPUT_FILE}")
+        df = pd.read_excel(INPUT_FILE)
     else:
-        print(f"Error: Neither input nor weighted output found.")
+        print(f"Error: Weighted LF results not found at {INPUT_FILE}")
         return
 
     # ── Filter TIEs ──

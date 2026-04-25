@@ -1,12 +1,14 @@
 import json
 import re
 import spacy
+from pathlib import Path
 
 # Load spaCy for better tokenization and segmentation [cite: 51]
 nlp = spacy.load("en_core_web_sm")
 
-INPUT_JSON = "/Users/chandan/Desktop/NLP/enron_structured.json"
-OUTPUT_LABELED_JSON = "/Users/chandan/Desktop/NLP/enron_weakly_labeled.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+INPUT_JSON = PROJECT_ROOT / "cleaning" / "enron_structured_first_60_rows.jsonl"
+OUTPUT_LABELED_JSON = PROJECT_ROOT / "weak_labels" / "enron_weakly_labeled.json"
 
 def labeling_pipeline_pro(emails):
     labeled_data = []
@@ -66,7 +68,8 @@ def labeling_pipeline_pro(emails):
 
 # Execute
 with open(INPUT_JSON, "r") as f:
-    data = json.load(f)
+    raw = f.read().strip()
+    data = json.loads(raw) if raw.startswith("[") else [json.loads(line) for line in raw.splitlines() if line.strip()]
 
 labeled_results = labeling_pipeline_pro(data[:60])
 
