@@ -1,1 +1,19 @@
 path
+
+# Local Python environment and caches
+.venv/
+__pycache__/
+*.pyc
+
+# macOS / Office temp files
+.DS_Store
+~$*
+
+# Large local raw dataset not needed for normal pushes
+dataset/emails_500k.csv
+
+# Large generated model artifacts
+LF/improvements_aayush/results/bert_model/
+LF/improvements_aayush/results/bert_model_augmented_urgent/
+LF/improvements_aayush/results/bert_model_weak_pretrained/
+LF/improvements_aayush/results/bert_model_weak_pretrained.zip

@@ -27,6 +27,7 @@ import pandas as pd
 import numpy as np
 import re
 import os
+from pathlib import Path
 
 # ── Snorkel import with helpful error message ──
 try:
@@ -47,8 +48,16 @@ except ImportError:
 # ─────────────────────────────────────────────
 # Update INPUT_FILE to point to your dataset.
 # The file can be a CSV or Excel — adjust the read call in run_snorkel_pipeline() below.
-INPUT_FILE  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/dataset/Golden Dataset - 300 rows refined.xlsx"
-OUTPUT_FILE = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/Step4_Snorkel_Results_2.xlsx"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+INPUT_FILE = PROJECT_ROOT / "dataset" / "Golden Dataset - 300 rows refined.xlsx"
+OUTPUT_FILE = (
+    PROJECT_ROOT
+    / "LF"
+    / "improvements_aayush"
+    / "results"
+    / "Step4_Snorkel_Results"
+    / "Step4_Snorkel_Results_portable.xlsx"
+)
 
 # Snorkel integer class constants
 URGENT_L      = 0
@@ -606,13 +615,14 @@ def majority_vote(lf_matrix, n_classes=3):
 # ─────────────────────────────────────────────
 
 def run_snorkel_pipeline():
+    os.makedirs(OUTPUT_FILE.parent, exist_ok=True)
     if not os.path.exists(INPUT_FILE):
         print(f"Error: File not found at {INPUT_FILE}")
         return
 
     # ── Load data — handles both .xlsx and .csv ──
     print(f"Loading: {INPUT_FILE}")
-    if INPUT_FILE.endswith('.xlsx') or INPUT_FILE.endswith('.xls'):
+    if str(INPUT_FILE).endswith('.xlsx') or str(INPUT_FILE).endswith('.xls'):
         dfs = pd.read_excel(INPUT_FILE, sheet_name=None)
         df = pd.concat(dfs.values(), ignore_index=True)
     else:

@@ -26,6 +26,7 @@ import pandas as pd
 import numpy as np
 import os
 import re
+from pathlib import Path
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
@@ -34,9 +35,30 @@ from sklearn.metrics import classification_report, confusion_matrix
 # ─────────────────────────────────────────────
 # CONFIG — update these paths
 # ─────────────────────────────────────────────
-SNORKEL_OUTPUT  = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step4_Snorkel_Results/Step4_Snorkel_Results_2.xlsx"
-RESULTS_FILE    = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/Step5_BERT_Results_2_2.xlsx"
-BERT_OUTPUT_DIR = "/Users/aayushpatel/Desktop/Rutgers/Academics/Spring 2026/NLP/NLP Project/LF/improvements_aayush/results/bert_model"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SNORKEL_OUTPUT = (
+    PROJECT_ROOT
+    / "LF"
+    / "improvements_aayush"
+    / "results"
+    / "Step4_Snorkel_Results"
+    / "Step4_Snorkel_Results_portable.xlsx"
+)
+RESULTS_FILE = (
+    PROJECT_ROOT
+    / "LF"
+    / "improvements_aayush"
+    / "results"
+    / "Step5_BERT"
+    / "Step5_BERT_Results_portable.xlsx"
+)
+BERT_OUTPUT_DIR = (
+    PROJECT_ROOT
+    / "LF"
+    / "improvements_aayush"
+    / "results"
+    / "bert_model"
+)
 
 LABEL2ID = {"URGENT": 0, "ACTION": 1, "INFORMATION": 2}
 ID2LABEL = {0: "URGENT", 1: "ACTION", 2: "INFORMATION"}
@@ -341,6 +363,7 @@ def run_bert_classifier(df):
 # ─────────────────────────────────────────────
 
 def save_results(df, tfidf_cv_preds, bert_preds=None, bert_probs=None):
+    os.makedirs(RESULTS_FILE.parent, exist_ok=True)
     out = df[['subject', 'body', 'gold']].copy() if 'subject' in df.columns else df[['Subject','Body','gold']].copy()
     out.columns = ['Subject', 'Body', 'Gold Label']
     out['TF-IDF (CV)'] = tfidf_cv_preds
