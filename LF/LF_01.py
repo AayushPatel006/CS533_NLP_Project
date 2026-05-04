@@ -3,22 +3,14 @@ import re
 import os
 
 
-#------------------------------
-#ALGORITHM PERFORMANCE SUMMARY
-#------------------------------
-#Total Emails Processed: 100
-#Correctly Predicted:    47
-#Incorrectly Predicted:  53
-#Accuracy Score:         47.00%
-#------------------------------
 
 
-# --- PATHS ---
-# Using the absolute path to ensure the file is found
+
+
 INPUT_FILE = "/Users/chandan/Desktop/NLP/Golden Dataset - 300 rows.xlsx - Batch 3.csv"
 OUTPUT_FILE = "/Users/chandan/Desktop/NLP/Batch3_Algorithm_Analysis.xlsx"
 
-# --- YOUR LOGIC (UNCHANGED) ---
+
 ABSTAIN = -1
 
 def normalize(text):
@@ -120,7 +112,7 @@ def lf_i4_attachment(text):
     phrases = ["attached", "see attached", "find attached"]
     return 1 if contains_any(text, phrases) else ABSTAIN
 
-# --- PROCESSING ---
+
 
 LFs = {
     "LF_U1_StrongUrgency": lf_u1_strong_urgency, "LF_U2_Deadline": lf_u2_deadline, 
@@ -156,8 +148,7 @@ def process_batch():
     analysis_df = df.apply(analyze_email, axis=1)
     final_df = pd.concat([df, analysis_df], axis=1)
 
-    # --- TERMINAL SUMMARY ---
-    # Normalize strings for comparison (strip whitespace and uppercase)
+   
     actual_labels = final_df['Final Label'].str.strip().str.upper()
     predicted_labels = final_df['Predicted Label'].str.strip().str.upper()
     
@@ -173,7 +164,7 @@ def process_batch():
     print(f"Accuracy Score:         {(correct_count/len(final_df))*100:.2f}%")
     print("-" * 30)
 
-    # --- SAVE TO EXCEL ---
+
     writer = pd.ExcelWriter(OUTPUT_FILE, engine='xlsxwriter')
     final_df.to_excel(writer, index=False, sheet_name='Analysis')
     workbook = writer.book

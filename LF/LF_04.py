@@ -2,10 +2,7 @@ import pandas as pd
 import re
 import os
 
-#Total Emails Evaluated : 97 (excluding Ties)
-#Correctly Predicted    : 56
-#Incorrectly Predicted  : 41
-#Accuracy Score         : 57.73%
+
 
 
 def normalize(text):
@@ -21,22 +18,20 @@ def analyze_email(row):
     subj = normalize(str(row.get('subject', '')))
     body = normalize(str(row.get('body', '')))
     
-    # Clean out forwarded message headers to avoid analyzing previous thread noise
+
     body_clean = re.sub(r'-----original message-----.*', '', body, flags=re.DOTALL)
     body_clean = re.sub(r'---------------------- forwarded by.*', '', body_clean, flags=re.DOTALL)
     
     text = f"{subj} {body_clean}"
     
-    # Initialize LF tracking
+
     lfs = {
         "LF_Info_Gatekeeper": 0,
         "LF_Urgent_Trigger": 0,
         "LF_Action_Trigger": 0
     }
     
-    # ---------------------------------------------------------
-    # 1. GATEKEEPER: INFORMATION OVERRIDES
-    # ---------------------------------------------------------
+
     info_overrides = [
         r"please be advised", r"fyi", r"for your information", r"newsletter", 
         r"advertisement", r"broadcasting", r"announcement", r"all employees", 
@@ -45,13 +40,11 @@ def analyze_email(row):
         r"interim report", r"ecard", r"raffle", r"travelocity", r"daily riddle", r"already worked this out"
     ]
     if any(re.search(pattern, text) for pattern in info_overrides):
-        # Allow bypass ONLY for extreme urgency
+
         if not re.search(r"asap|\!\!+|deadline|urgent", text):
             lfs["LF_Info_Gatekeeper"] = 1
 
-    # ---------------------------------------------------------
-    # 2. URGENT TRIGGERS
-    # ---------------------------------------------------------
+   
     urgent_patterns = [
         r"asap", r"immediately", r"urgent", r"tonight", r"due today", r"right away",
         r"security resource request", r"book the hotel", r"visiting san francisco",
@@ -61,9 +54,7 @@ def analyze_email(row):
     if any(re.search(pattern, text) for pattern in urgent_patterns):
         lfs["LF_Urgent_Trigger"] = 1
 
-    # ---------------------------------------------------------
-    # 3. ACTION TRIGGERS
-    # ---------------------------------------------------------
+   
     action_patterns = [
         r"\?", r"can you", r"could you", r"would you", r"let me know", r"action required",
         r"we should", r"assistance is requested", r"give me a call", r"seeking views",
@@ -75,9 +66,7 @@ def analyze_email(row):
         if "i will let you know" not in text and "we'll check it out" not in text:
             lfs["LF_Action_Trigger"] = 1
 
-    # ---------------------------------------------------------
-    # FINAL PREDICTION LOGIC
-    # ---------------------------------------------------------
+
     if lfs["LF_Info_Gatekeeper"] == 1:
         predicted = "INFORMATION"
     elif lfs["LF_Urgent_Trigger"] == 1:
@@ -102,19 +91,19 @@ def run_evaluation_pipeline(input_filepath, output_filepath):
     print(f"Loading data from: {input_filepath}...")
     df = pd.read_csv(input_filepath)
     
-    # Strip illegal Excel characters from the text to prevent crashes
+
     ILLEGAL_RE = re.compile(r'[\000-\010]|[\013-\014]|[\016-\037]')
     df['body'] = df['body'].apply(lambda x: ILLEGAL_RE.sub("", str(x)))
     df['subject'] = df['subject'].apply(lambda x: ILLEGAL_RE.sub("", str(x)))
 
-    # Apply the analysis function
+
     analysis_results = df.apply(analyze_email, axis=1)
     
-    # Combine original data with the new analysis columns
+
     final_df = pd.concat([df, analysis_results], axis=1)
 
-    # --- TERMINAL ACCURACY REPORT ---
-    # Filter out 'TIE' rows so they don't skew the true algorithm performance
+
+
     eval_df = final_df[final_df['Final Label'].str.strip().str.upper() != "TIE"]
     
     actual = eval_df['Final Label'].str.strip().str.upper()
@@ -133,7 +122,7 @@ def run_evaluation_pipeline(input_filepath, output_filepath):
     print(f"Accuracy Score         : {accuracy:.2f}%")
     print("="*40 + "\n")
 
-    # --- EXCEL EXPORT & FORMATTING ---
+
     print(f"Exporting results to Excel...")
     writer = pd.ExcelWriter(output_filepath, engine='xlsxwriter')
     final_df.to_excel(writer, index=False, sheet_name='Labeled_Results')
@@ -141,20 +130,20 @@ def run_evaluation_pipeline(input_filepath, output_filepath):
     workbook = writer.book
     worksheet = writer.sheets['Labeled_Results']
     
-    # Define styles for correct (Green) and incorrect (Red)
+
     format_correct = workbook.add_format({'bg_color': '#C6EFCE', 'font_color': '#006100'})
     format_incorrect = workbook.add_format({'bg_color': '#FFC7CE', 'font_color': '#9C0006'})
     
-    # Find column indices
+
     col_final = final_df.columns.get_loc("Final Label")
     col_pred = final_df.columns.get_loc("Predicted Label")
     
-    # Apply formatting row by row
+
     for row_idx in range(1, len(final_df) + 1):
         actual_val = str(final_df.iloc[row_idx-1, col_final]).strip().upper()
         pred_val = str(final_df.iloc[row_idx-1, col_pred]).strip().upper()
         
-        # Skip coloring if it was a TIE
+
         if actual_val == "TIE":
             continue
             
@@ -164,9 +153,9 @@ def run_evaluation_pipeline(input_filepath, output_filepath):
     writer.close()
     print(f"✅ Success! Color-coded analysis saved to: {output_filepath}")
 
-# --- EXECUTION ---
+
 if __name__ == "__main__":
-    # Define your specific inputs and outputs here
+
     INPUT_CSV = "/Users/chandan/Desktop/NLP/Golden Dataset - 300 rows.xlsx - Batch 3.csv"
     OUTPUT_EXCEL = "/Users/chandan/Desktop/NLP/Batch3_Evaluated.xlsx"
     

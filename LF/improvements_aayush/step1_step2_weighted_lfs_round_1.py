@@ -1,20 +1,3 @@
-"""
-STEP 1 & 2: WEIGHTED CONFIDENCE SCORING + FIXED GATEKEEPER
-============================================================
-Key changes from your original LF_01 to LF_04:
-
-STEP 1 - Confidence weights instead of binary voting:
-  - Each LF now returns a (class, weight) tuple instead of 1/ABSTAIN
-  - Strong signals (ASAP + verb) get weight 3, weak signals (?) get weight 1
-  - Final label = class with highest total weight score
-
-STEP 2 - Fixed the three biggest misclassification patterns:
-  - INFO gatekeeper is now a soft vote (adds weight), NOT a hard override
-  - Only true hard overrides: "automatic reply", "newsletter", "distribution list"
-  - Scheduling alone is NOT urgent — needs time pressure to co-occur
-  - Negation filter expanded: "I will let you know", "already done", etc.
-  - Subject line given 1.5x weight multiplier
-"""
 
 import pandas as pd
 import re
@@ -72,9 +55,7 @@ def has_negation(text):
     return contains_any(text, negation_phrases)
 
 
-# ─────────────────────────────────────────────
-# HARD OVERRIDE (the ONLY true gatekeeper)
-# ─────────────────────────────────────────────
+
 
 def is_hard_information(text):
     """
@@ -91,11 +72,7 @@ def is_hard_information(text):
     return regex_match(text, hard_patterns)
 
 
-# ─────────────────────────────────────────────
-# LABELING FUNCTIONS — return (label, weight) or ABSTAIN
-# ─────────────────────────────────────────────
 
-# --- URGENT LFs ---
 
 def lf_u1_asap_with_verb(text):
     """
@@ -169,7 +146,6 @@ def lf_u7_conference_call_now(text):
     return ABSTAIN
 
 
-# --- ACTION LFs ---
 
 def lf_a1_direct_command(text):
     """
@@ -239,7 +215,7 @@ def lf_a8_scheduling_no_pressure(text):
     return ABSTAIN
 
 
-# --- INFORMATION LFs ---
+
 
 def lf_i1_explicit_fyi(text):
     """FYI / for your information / just to inform — clear info signal. Weight 2."""
@@ -282,9 +258,7 @@ def lf_i5_sender_narrating_own_action(text):
     return ABSTAIN
 
 
-# ─────────────────────────────────────────────
-# AGGREGATION ENGINE (STEP 1 core)
-# ─────────────────────────────────────────────
+
 
 def predict_label(row):
     """
@@ -363,10 +337,6 @@ def predict_label(row):
     return final_label, dict(scores), lf_outputs
 
 
-# ─────────────────────────────────────────────
-# PIPELINE RUNNER
-# ─────────────────────────────────────────────
-
 def run_pipeline():
     if not os.path.exists(INPUT_FILE):
         print(f"Error: File not found at {INPUT_FILE}")
@@ -396,7 +366,7 @@ def run_pipeline():
     scores_df = pd.DataFrame(score_rows)
     final_df  = pd.concat([df, scores_df], axis=1)
 
-    # ── Accuracy report (exclude TIEs) ──
+
     eval_df   = final_df[final_df['Final Label'].str.strip().str.upper() != "TIE"]
     actual    = eval_df['Final Label'].str.strip().str.upper()
     predicted = eval_df['Predicted Label'].str.strip().str.upper()
@@ -419,7 +389,7 @@ def run_pipeline():
         print(f"  {cls:12s}: {cls_corr}/{cls_tot} ({(cls_corr/cls_tot*100) if cls_tot else 0:.1f}%)")
     print("="*45)
 
-    # ── Excel export with colour coding ──
+
     writer    = pd.ExcelWriter(OUTPUT_FILE, engine='xlsxwriter')
     final_df.to_excel(writer, index=False, sheet_name='Weighted_Results')
     workbook  = writer.book

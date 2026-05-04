@@ -1,26 +1,4 @@
-"""
-STEP 5: CLASSIFIER TRAINED ON GOLD LABELS
-==========================================
-KEY FIX FROM STEP 5 v1:
-  Snorkel's soft labels are UNINFORMATIVE for URGENT:
-    Mean P_URGENT for actual URGENT     = 0.238
-    Mean P_URGENT for actual ACTION     = 0.242
-    Mean P_URGENT for actual INFO       = 0.260
-  All three classes get nearly identical P_URGENT scores.
-  BERT trained on these learns to never predict URGENT.
 
-THE SOLUTION:
-  Train directly on the 294 GOLD labels instead of Snorkel soft labels.
-  Use class_weight='balanced' to handle URGENT imbalance (18 vs 123 vs 153).
-  Use 5-fold cross-validation to get honest accuracy estimates.
-
-  294 gold labels is sufficient for BERT fine-tuning — this is standard
-  practice for domain-specific classification with small labelled sets.
-
-TWO MODELS:yes 
-  1. TF-IDF + Logistic Regression — 5-fold CV on gold labels (fast baseline)
-  2. BERT fine-tuned — 5-fold CV on gold labels with weighted loss
-"""
 
 import pandas as pd
 import numpy as np
@@ -32,9 +10,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from sklearn.metrics import classification_report, confusion_matrix
 
-# ─────────────────────────────────────────────
-# CONFIG — update these paths
-# ─────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SNORKEL_OUTPUT = (
     PROJECT_ROOT
@@ -64,10 +39,6 @@ LABEL2ID = {"URGENT": 0, "ACTION": 1, "INFORMATION": 2}
 ID2LABEL = {0: "URGENT", 1: "ACTION", 2: "INFORMATION"}
 
 
-# ─────────────────────────────────────────────
-# HELPERS
-# ─────────────────────────────────────────────
-
 def clean_body(body):
     body = re.sub(r'-----original message-----.*', '', str(body), flags=re.DOTALL)
     body = re.sub(r'---------------------- forwarded by.*', '', body, flags=re.DOTALL)
@@ -80,7 +51,6 @@ def make_text(row):
     return f"{subj} [SEP] {body}"
 
 def load_data():
-    """Load Snorkel output. We use the email text + gold labels only."""
     print("Loading data from Snorkel output...")
     df = pd.read_excel(SNORKEL_OUTPUT, sheet_name='Snorkel_Results')
     df['text'] = df.apply(make_text, axis=1)
@@ -90,7 +60,6 @@ def load_data():
     print(f"  Loaded {len(df)} emails")
     print(f"  Gold label distribution:\n{df['gold'].value_counts().to_string()}")
     
-    # Report why Snorkel soft labels are not used
     if 'P_URGENT' in df.columns:
         mean_p_by_class = {}
         print("\n  Snorkel P_URGENT by actual class (confirming soft labels are uninformative):")
@@ -125,16 +94,9 @@ def evaluate(y_true, y_pred, model_name):
     return {'accuracy': correct/total, 'predictions': list(y_pred)}
 
 
-# ─────────────────────────────────────────────
-# MODEL 1: TF-IDF + LOGISTIC REGRESSION
-# ─────────────────────────────────────────────
+
 
 def run_tfidf_baseline(df):
-    """
-    Trained on GOLD labels with class_weight='balanced'.
-    5-fold stratified cross-validation for honest evaluation.
-    URGENT class weight ~5.4x corrects for the 18-email imbalance.
-    """
     print("\n" + "="*55)
     print("  MODEL 1: TF-IDF + LOGISTIC REGRESSION")
     print("  (gold labels + balanced weights, 5-fold CV)")
@@ -159,27 +121,16 @@ def run_tfidf_baseline(df):
         random_state=42,
         solver='lbfgs',
     )
-
-    # Cross-val predictions — each email predicted on a fold it wasn't trained on
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     y_pred_cv = cross_val_predict(clf, X_tfidf, y_gold, cv=cv)
     results = evaluate(y_gold, y_pred_cv, "TF-IDF + LogReg (gold labels, 5-fold CV)")
 
-    # Refit on full data for the Excel output
     clf.fit(X_tfidf, y_gold)
     return vectorizer, clf, results, list(y_pred_cv)
 
 
-# ─────────────────────────────────────────────
-# MODEL 2: BERT FINE-TUNING ON GOLD LABELS
-# ─────────────────────────────────────────────
 
 def run_bert_classifier(df):
-    """
-    Fine-tune BERT on GOLD labels using weighted CrossEntropy loss.
-    5-fold stratified cross-validation.
-    URGENT receives ~5.4x higher loss weight to force the model to learn it.
-    """
     try:
         import torch
         from torch import nn
@@ -211,12 +162,9 @@ def run_bert_classifier(df):
     texts  = df['text'].tolist()
     labels = [LABEL2ID[g] for g in df['gold']]
 
-    # Class weights: total / (n_classes * count_per_class)
     from collections import Counter
     counts = Counter(labels)
     n      = len(labels)
-    # Cap weights at 3.0 — higher values cause BERT to collapse toward the rare class
-    # (URGENT weight of 5.44 caused 280/294 emails to be predicted URGENT in v1)
     raw_weights = [n / (3 * counts[i]) for i in range(3)]
     capped_weights = [min(w, 3.0) for w in raw_weights]
     weights = torch.tensor(capped_weights, dtype=torch.float).to(device)
@@ -245,7 +193,6 @@ def run_bert_classifier(df):
                 'label':          torch.tensor(self.labels[idx], dtype=torch.long),
             }
 
-    # ── 5-fold cross-validation ──
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     all_preds  = [None] * len(texts)
     all_probs  = [None] * len(texts)
@@ -271,7 +218,6 @@ def run_bert_classifier(df):
             ignore_mismatched_sizes=True,
         ).to(device)
 
-        # Weighted cross-entropy — URGENT gets much higher loss weight
         loss_fn   = nn.CrossEntropyLoss(weight=weights)
         optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=0.01)
         total_steps = len(train_dl) * EPOCHS
@@ -281,7 +227,7 @@ def run_bert_classifier(df):
             num_training_steps=total_steps
         )
 
-        GRAD_ACCUM = 2   # accumulate 2 steps → effective batch size = 16
+        GRAD_ACCUM = 2   
         model.train()
         for epoch in range(EPOCHS):
             total_loss = 0
@@ -301,7 +247,6 @@ def run_bert_classifier(df):
                     optimizer.zero_grad()
             print(f"    Epoch {epoch+1}/{EPOCHS} — loss: {total_loss/len(train_dl):.4f}")
 
-        # Evaluate this fold
         model.eval()
         with torch.no_grad():
             val_offset = 0
@@ -320,12 +265,9 @@ def run_bert_classifier(df):
         del model
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-
-    # Collect results
     y_true = [ID2LABEL[l] for l in labels]
     results = evaluate(y_true, all_preds, "BERT (gold labels, weighted loss, 5-fold CV)")
 
-    # Save final model trained on ALL data
     print("\n  Training final model on all data for saving...")
     full_ds = EmailDataset(texts, labels, tokenizer, MAX_LEN)
     full_dl = DataLoader(full_ds, batch_size=BATCH_SIZE, shuffle=True)
@@ -358,9 +300,7 @@ def run_bert_classifier(df):
     return results, np.array(all_probs), all_preds
 
 
-# ─────────────────────────────────────────────
-# SAVE RESULTS
-# ─────────────────────────────────────────────
+
 
 def save_results(df, tfidf_cv_preds, bert_preds=None, bert_probs=None):
     os.makedirs(RESULTS_FILE.parent, exist_ok=True)
@@ -392,17 +332,11 @@ def save_results(df, tfidf_cv_preds, bert_preds=None, bert_probs=None):
     print(f"\n  Results saved → {RESULTS_FILE}")
 
 
-# ─────────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────────
-
 if __name__ == "__main__":
     df = load_data()
 
-    # Model 1: TF-IDF baseline
     vectorizer, clf, tfidf_results, tfidf_cv_preds = run_tfidf_baseline(df)
 
-    # Model 2: BERT
     bert_result = run_bert_classifier(df)
     if bert_result:
         bert_results, bert_probs, bert_preds = bert_result

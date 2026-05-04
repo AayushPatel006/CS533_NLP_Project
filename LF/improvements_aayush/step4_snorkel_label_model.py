@@ -1,27 +1,4 @@
-"""
-STEP 4: SNORKEL LABEL MODEL INTEGRATION
-=========================================
-Instead of hand-coded priority voting, Snorkel's generative LabelModel:
-  - Learns the ACCURACY of each LF automatically from data
-  - Learns CORRELATIONS between LFs (e.g., LF_U1 and LF_U3 often fire together)
-  - Produces probabilistic labels instead of hard votes
-  - Has been shown to outperform majority vote significantly
 
-Install requirement:
-    pip install snorkel
-
-HOW IT WORKS:
-  1. Each LF votes on every email → produces an LF matrix (N emails × M LFs)
-  2. LabelModel learns LF accuracies from the matrix (no gold labels needed)
-  3. LabelModel outputs soft probabilities → we argmax to get hard labels
-  4. We evaluate against your 300-email gold set
-
-LF RETURN VALUES (Snorkel convention):
-  URGENT      = 0
-  ACTION      = 1
-  INFORMATION = 2
-  ABSTAIN     = -1
-"""
 
 import pandas as pd
 import numpy as np
@@ -29,7 +6,6 @@ import re
 import os
 from pathlib import Path
 
-# ── Snorkel import with helpful error message ──
 try:
     from snorkel.labeling import LabelingFunction, PandasLFApplier
     from snorkel.labeling.model import LabelModel
@@ -37,17 +13,9 @@ try:
     SNORKEL_AVAILABLE = True
 except ImportError:
     SNORKEL_AVAILABLE = False
-    print("⚠️  Snorkel not installed. Run:  pip install snorkel")
+    print("Snorkel not installed. Run:  pip install snorkel")
     print("    Falling back to majority vote so you can still see the LF matrix.\n")
 
-# ─────────────────────────────────────────────
-# CONFIG
-# ─────────────────────────────────────────────
-# ─────────────────────────────────────────────
-# CONFIG
-# ─────────────────────────────────────────────
-# Update INPUT_FILE to point to your dataset.
-# The file can be a CSV or Excel — adjust the read call in run_snorkel_pipeline() below.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INPUT_FILE = PROJECT_ROOT / "dataset" / "Golden Dataset - 300 rows refined.xlsx"
 OUTPUT_FILE = (
@@ -59,7 +27,6 @@ OUTPUT_FILE = (
     / "Step4_Snorkel_Results_portable.xlsx"
 )
 
-# Snorkel integer class constants
 URGENT_L      = 0
 ACTION_L      = 1
 INFORMATION_L = 2
@@ -68,10 +35,6 @@ ABSTAIN_L     = -1
 CLASS_NAMES = {URGENT_L: "URGENT", ACTION_L: "ACTION", INFORMATION_L: "INFORMATION"}
 CLASS_MAP   = {"URGENT": URGENT_L, "ACTION": ACTION_L, "INFORMATION": INFORMATION_L}
 
-
-# ─────────────────────────────────────────────
-# PREPROCESSING HELPERS
-# ─────────────────────────────────────────────
 
 def normalize(text):
     if not text or not isinstance(text, str): return ""
@@ -104,17 +67,12 @@ def has_negation(text):
     return contains_any(text, negation_phrases)
 
 
-# ─────────────────────────────────────────────
-# LABELING FUNCTIONS (Snorkel-style: row → int)
-# Each function takes a pandas row and returns an integer label or ABSTAIN_L
-# ─────────────────────────────────────────────
-
 def lf_u1_asap_strong(row):
     _, _, text = get_text(row)
     urgency  = contains_any(text, ["asap", "immediately", "right away", "urgent", "as soon as possible"])
     has_verb = contains_any(text, ["submit", "review", "call", "send", "approve", "book", "confirm"])
     if urgency and has_verb: return URGENT_L
-    if urgency:              return URGENT_L   # ASAP alone is still urgent
+    if urgency:              return URGENT_L
     return ABSTAIN_L
 
 def lf_u2_deadline(row):
@@ -135,23 +93,18 @@ def lf_u4_hyper_punctuation(row):
     return URGENT_L if re.search(r"\?\?+|\!\!+", text) else ABSTAIN_L
 
 def lf_u5_high_stakes(row):
-    # "legal" and "compliance" removed — appear in ~60% of Enron emails,
-    # causing massive false URGENT predictions. Round 3 fix.
     _, _, text = get_text(row)
     domains = ["security breach", "medical", "emergency",
                "stocks", "nymex", "healthcare", "tucson electric"]
     return URGENT_L if contains_any(text, domains) else ABSTAIN_L
 
 def lf_u6_scheduling_pressure(row):
-    """Scheduling + time pressure → URGENT."""
     _, _, text = get_text(row)
     has_sched = contains_any(text, ["schedule", "book", "reserve", "meeting"])
     has_press = contains_any(text, ["asap", "today", "tonight", "immediately", "urgent"])
     return URGENT_L if (has_sched and has_press) else ABSTAIN_L
 
 def lf_u7_conf_call_now(row):
-    # Round 3 fix: only fire for same-day calls (today/this afternoon/now),
-    # not any conf call that mentions a future day.
     _, _, text = get_text(row)
     has_call = contains_any(text, ["conference call", "call at", "phone at"])
     has_time = regex_match(text, [r"\d{1,2}:\d{2}\s*(am|pm).{0,20}(today|this afternoon|now)"])
@@ -199,7 +152,6 @@ def lf_a7_question_start(row):
     return ABSTAIN_L
 
 def lf_a8_scheduling_no_pressure(row):
-    """Scheduling WITHOUT pressure → ACTION not URGENT."""
     _, _, text = get_text(row)
     has_sched = contains_any(text, ["schedule", "set up a meeting", "can we meet"])
     has_press = contains_any(text, ["asap", "today", "tonight", "immediately", "urgent"])
@@ -213,7 +165,6 @@ def lf_i1_fyi(row):
 
 def lf_i2_acknowledgement(row):
     _, _, text = get_text(row)
-    # Soft signal — only fires information if NO action words present
     has_ack    = contains_any(text, ["thank you", "thanks", "noted", "received", "got it"])
     has_action = contains_any(text, ["please", "can you", "could you", "?", "asap"])
     if has_ack and not has_action:
@@ -226,7 +177,6 @@ def lf_i3_broadcast(row):
                                                   "broadcasting", "we are pleased to announce"]) else ABSTAIN_L
 
 def lf_i4_hard_info(row):
-    """Hard cases — these are almost never actionable."""
     _, _, text = get_text(row)
     patterns = [r"automatic reply", r"out of office", r"newsletter",
                 r"distribution list", r"daily riddle", r"ecard", r"raffle",
@@ -241,13 +191,7 @@ def lf_i5_sender_acting(row):
     return INFORMATION_L if regex_match(text, patterns) else ABSTAIN_L
 
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ROUND 1 NEW LFs — Fix 1: Stop false URGENT (ACTION→URGENT)
-# ─────────────────────────────────────────────────────────────────────────────
-
 def lf_u_legal_needs_pressure(row):
-    # "legal" alone is not urgent; needs co-occurring pressure word
     _, _, text = get_text(row)
     has_legal    = contains_any(text, ["legal", "compliance", "attorney"])
     has_pressure = contains_any(text, ["asap", "immediately", "urgent", "deadline",
@@ -257,7 +201,6 @@ def lf_u_legal_needs_pressure(row):
     return ABSTAIN_L
 
 def lf_u_tonight_casual_filter(row):
-    # "tonight" in social context → INFO; "tonight" + work task → URGENT
     _, _, text = get_text(row)
     if "tonight" not in text:
         return ABSTAIN_L
@@ -271,7 +214,6 @@ def lf_u_tonight_casual_filter(row):
     return ABSTAIN_L
 
 def lf_u_conference_call_no_pressure(row):
-    # Conf call without same-day pressure → ACTION; with pressure → URGENT
     _, _, text = get_text(row)
     if not contains_any(text, ["conference call", "conf call"]):
         return ABSTAIN_L
@@ -280,12 +222,10 @@ def lf_u_conference_call_no_pressure(row):
     return ACTION_L
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ROUND 1 NEW LFs — Fix 2: Stop false ACTION (INFO→ACTION)
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 def lf_i_forwarded_chain(row):
-    # Pure forwards with no ask in the top → INFO; forward + request → ACTION
+
     _, _, text = get_text(row)
     forward_patterns = [r"^fwd?:", r"^fw:", r"-+ forwarded by", r"forwarded by .{5,50} on"]
     if not regex_match(text, forward_patterns):
@@ -296,7 +236,7 @@ def lf_i_forwarded_chain(row):
     return ACTION_L if has_ask else INFORMATION_L
 
 def lf_i_newsletter_or_promotion(row):
-    # Marketing / newsletter content → INFO
+
     _, _, text = get_text(row)
     patterns = [r"click here", r"unsubscribe", r"subscribe", r"privacy policy",
                 r"win a free", r"enter to win", r"you are receiving this",
@@ -305,7 +245,7 @@ def lf_i_newsletter_or_promotion(row):
     return INFORMATION_L if regex_match(text, patterns) else ABSTAIN_L
 
 def lf_i_long_informational_report(row):
-    # Very long emails that are reports/news summaries → INFO
+
     _, _, text = get_text(row)
     is_long = len(text) > 1500
     report_indicators = [r"press release", r"bloomberg", r"reuters", r"according to",
@@ -316,7 +256,7 @@ def lf_i_long_informational_report(row):
     return ABSTAIN_L
 
 def lf_i_social_personal_email(row):
-    # Clearly personal/social emails → INFO
+
     _, _, text = get_text(row)
     patterns = [r"how was (your|the) (weekend|trip|game|play|party)",
                 r"(drinks|dinner|lunch|pizza|bar) (tonight|last night|tomorrow)",
@@ -327,7 +267,7 @@ def lf_i_social_personal_email(row):
     return INFORMATION_L if regex_match(text, patterns) else ABSTAIN_L
 
 def lf_i_sender_concluding_reply(row):
-    # Short closing replies → INFO; guard: direct task verb overrides
+
     _, _, text = get_text(row)
     task_guard = r"(ship|send|move|add|path|book|enter|update|process|forward|flip|assign)\s+(it|them|this|the|all|these)"
     if re.search(task_guard, text):
@@ -343,12 +283,10 @@ def lf_i_sender_concluding_reply(row):
     return ABSTAIN_L
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ROUND 1 NEW LFs — Fix 3: Stop false URGENT (INFO→URGENT)
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 def lf_i_institutional_announcement(row):
-    # System/HR/company broadcast notices → INFO
+
     _, _, text = get_text(row)
     patterns = [r"please be advised",
                 r"to: all (nymex|comex|enron|employees|members|brokers)",
@@ -361,7 +299,7 @@ def lf_i_institutional_announcement(row):
     return INFORMATION_L if regex_match(text, patterns) else ABSTAIN_L
 
 def lf_i_schedule_or_procedure_doc(row):
-    # Processing schedules, procedural timetables, migration guides → INFO
+
     _, _, text = get_text(row)
     patterns = [r"(date|banking business day):\s+\d",
                 r"(step|item)\s+\d+[\.:]",
@@ -372,7 +310,7 @@ def lf_i_schedule_or_procedure_doc(row):
     return INFORMATION_L if regex_match(text, patterns) else ABSTAIN_L
 
 def lf_i_deadline_in_broadcast(row):
-    # Deadlines in announcement/broadcast context → INFO not URGENT
+
     _, _, text = get_text(row)
     patterns = [r"(registration|enrollment|feedback|submission|response) (deadline|due date|by)",
                 r"please (complete|provide|submit|have) .{0,60} by (the date|friday|end of)",
@@ -382,12 +320,10 @@ def lf_i_deadline_in_broadcast(row):
     return INFORMATION_L if regex_match(text, patterns) else ABSTAIN_L
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ROUND 1 NEW LFs — Fix 4: Catch missed URGENT (URGENT→ACTION)
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 def lf_u_specific_date_near_future(row):
-    # Specific near-future date + action ask → URGENT
+
     _, _, text = get_text(row)
     near_date = [r"(monday|tuesday|wednesday|thursday|friday),?\s+(july|june|aug|sep|jan|feb|mar|apr|may|oct|nov|dec)\s+\d+",
                  r"week of (july|june|aug|sep|jan|feb|mar|apr|may|oct|nov|dec)",
@@ -397,7 +333,7 @@ def lf_u_specific_date_near_future(row):
     return URGENT_L if (regex_match(text, near_date) and has_ask) else ABSTAIN_L
 
 def lf_u_security_resource_request(row):
-    # IT security/access approval workflow → URGENT
+
     _, _, text = get_text(row)
     patterns = [r"security resource request",
                 r"(approve|reject) (request|access)",
@@ -406,7 +342,7 @@ def lf_u_security_resource_request(row):
     return URGENT_L if regex_match(text, patterns) else ABSTAIN_L
 
 def lf_u_deadline_with_recipient_ask(row):
-    # Personal deadline directed at recipient → URGENT
+
     _, _, text = get_text(row)
     patterns = [r"(responses?|comments?|feedback|changes?|summaries?) (are |is )?(due|must be (received|submitted)).{0,50}(by|on|before|no later than)",
                 r"please (provide|send|submit|have) .{0,80} by (wednesday|monday|tuesday|thursday|friday|end of( the)? week|close of business)",
@@ -415,12 +351,9 @@ def lf_u_deadline_with_recipient_ask(row):
     return URGENT_L if regex_match(text, patterns) else ABSTAIN_L
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ROUND 2 NEW LFs — Fix A: Protect short direct professional requests (ACT→INFO)
-# ─────────────────────────────────────────────────────────────────────────────
 
 def lf_a_short_direct_command(row):
-    # Short emails with direct command/question patterns → ACTION (high confidence)
+
     subj, body, _ = get_text(row)
     if len(body) > 500:
         return ABSTAIN_L
@@ -436,7 +369,7 @@ def lf_a_short_direct_command(row):
     return ACTION_L if any(re.search(p, body) for p in patterns) else ABSTAIN_L
 
 def lf_a_fyi_with_ask(row):
-    # FYI + embedded question → ACTION; pure FYI → INFO
+
     _, _, text = get_text(row)
     has_fyi = (text.strip().startswith("fyi") or
                re.search(r"^\w+ --\s*\nfyi", text))
@@ -448,7 +381,7 @@ def lf_a_fyi_with_ask(row):
     return INFORMATION_L
 
 def lf_a_operational_data_request(row):
-    # Emails with specific energy quantities, deal numbers, meter IDs → ACTION
+
     _, _, text = get_text(row)
     patterns = [r"\d+[,.]?\d*\s*(mmbtu|mmcf|mw|mwh|dt|mcf|bbl|mmbd)",
                 r"deal\s*#?\s*\d{5,}",
@@ -461,12 +394,10 @@ def lf_a_operational_data_request(row):
     return ACTION_L if any(re.search(p, text) for p in patterns) else ABSTAIN_L
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ROUND 2 NEW LFs — Fix B: Stop false URGENT on social/casual (ACT→URGENT)
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 def lf_u_asap_in_forwarded_thread_only(row):
-    # ASAP only in forwarded content, not current sender's text → ACTION not URGENT
+
     _, body, _ = get_text(row)
     top = re.split(
         r'(-{3,}\s*(original message|forwarded by)|from:.{5,50}on \d{1,2}/\d{1,2}/\d{4})',
@@ -479,7 +410,7 @@ def lf_u_asap_in_forwarded_thread_only(row):
     return ABSTAIN_L
 
 def lf_u_casual_social_context(row):
-    # Strong social/personal signals → INFO (overrides urgency keywords)
+
     _, _, text = get_text(row)
     patterns = [r"(birthday|christmas) (card|gift|present)",
                 r"(high school|reunion|old friend|long lost)",
@@ -495,7 +426,7 @@ def lf_u_casual_social_context(row):
     return INFORMATION_L if any(re.search(p, text) for p in patterns) else ABSTAIN_L
 
 def lf_u_cancelled_or_resolved_meeting(row):
-    # Cancelled/rescheduled meetings or resolved issues → ACTION (not URGENT)
+
     _, _, text = get_text(row)
     patterns = [r"(meeting|call|session|event)\s+(has been|is)\s+(cancelled|canceled|rescheduled|postponed)",
                 r"(cancelled|canceled|postponed|rescheduled)\s+(the|this|our|today)",
@@ -506,12 +437,10 @@ def lf_u_cancelled_or_resolved_meeting(row):
     return ACTION_L if any(re.search(p, text) for p in patterns) else ABSTAIN_L
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ROUND 2 NEW LFs — Fix C: Protect forwarded INFO reports from URGENT (INF→URGENT)
-# ─────────────────────────────────────────────────────────────────────────────
+
 
 def lf_i_minimal_comment_forward(row):
-    # Current sender adds <120 chars before a long forward with no ask → INFO
+
     _, body, _ = get_text(row)
     split = re.split(
         r'(-{5,}\s*(original message|forwarded by)|from:.{5,80}on \d{1,2}/\d{1,2}/\d{4}|-{5,} forwarded)',
@@ -528,7 +457,7 @@ def lf_i_minimal_comment_forward(row):
     return ABSTAIN_L
 
 def lf_i_news_or_report_forward(row):
-    # Forwarded press releases, news articles, industry reports → INFO
+
     _, _, text = get_text(row)
     patterns = [r"(press release|bloomberg|reuters|wall street journal|"
                 r"sf chronicle|san francisco chronicle|financial times)",
@@ -540,7 +469,7 @@ def lf_i_news_or_report_forward(row):
     return INFORMATION_L if any(re.search(p, text) for p in patterns) else ABSTAIN_L
 
 def lf_i_resolved_thread(row):
-    # Short reply where sender closes the thread → INFO
+
     _, body, _ = get_text(row)
     split = re.split(
         r'(-{3,}\s*(original message|forwarded by)|from:.{5,50}on \d{1,2}/\d{1,2}/\d{4})',
@@ -558,25 +487,22 @@ def lf_i_resolved_thread(row):
     return ABSTAIN_L
 
 
-# ─────────────────────────────────────────────
-# SNORKEL LF WRAPPERS
-# ─────────────────────────────────────────────
 
 ALL_LF_FUNCTIONS = [
-    # ── Original base LFs (20) ──
+
     lf_u1_asap_strong, lf_u2_deadline, lf_u3_eod, lf_u4_hyper_punctuation,
     lf_u5_high_stakes, lf_u6_scheduling_pressure, lf_u7_conf_call_now,
     lf_a1_direct_command, lf_a2_subject_intent, lf_a3_question_mark,
     lf_a4_conversational, lf_a5_followup, lf_a6_approval,
     lf_a7_question_start, lf_a8_scheduling_no_pressure,
     lf_i1_fyi, lf_i2_acknowledgement, lf_i3_broadcast, lf_i4_hard_info, lf_i5_sender_acting,
-    # ── Round 1 new LFs (14) ──
+
     lf_u_legal_needs_pressure, lf_u_tonight_casual_filter, lf_u_conference_call_no_pressure,
     lf_i_forwarded_chain, lf_i_newsletter_or_promotion, lf_i_long_informational_report,
     lf_i_social_personal_email, lf_i_sender_concluding_reply,
     lf_i_institutional_announcement, lf_i_schedule_or_procedure_doc, lf_i_deadline_in_broadcast,
     lf_u_specific_date_near_future, lf_u_security_resource_request, lf_u_deadline_with_recipient_ask,
-    # ── Round 2 new LFs (9) ──
+
     lf_a_short_direct_command, lf_a_fyi_with_ask, lf_a_operational_data_request,
     lf_u_asap_in_forwarded_thread_only, lf_u_casual_social_context, lf_u_cancelled_or_resolved_meeting,
     lf_i_minimal_comment_forward, lf_i_news_or_report_forward, lf_i_resolved_thread,
@@ -586,10 +512,7 @@ LF_NAMES = [f.__name__ for f in ALL_LF_FUNCTIONS]
 
 
 def build_lf_matrix_manually(df):
-    """
-    Fallback: builds the LF matrix without Snorkel.
-    Returns numpy array of shape (N, M) with values in {-1, 0, 1, 2}.
-    """
+   
     matrix = np.full((len(df), len(ALL_LF_FUNCTIONS)), ABSTAIN_L, dtype=int)
     for col_idx, lf_fn in enumerate(ALL_LF_FUNCTIONS):
         for row_idx, (_, row) in enumerate(df.iterrows()):
@@ -598,7 +521,7 @@ def build_lf_matrix_manually(df):
 
 
 def majority_vote(lf_matrix, n_classes=3):
-    """Fallback majority vote aggregation (no Snorkel)."""
+
     predictions = []
     for row in lf_matrix:
         counts = np.bincount(row[row != ABSTAIN_L] + 1, minlength=n_classes + 1)
@@ -610,9 +533,7 @@ def majority_vote(lf_matrix, n_classes=3):
     return np.array(predictions)
 
 
-# ─────────────────────────────────────────────
-# MAIN RUNNER
-# ─────────────────────────────────────────────
+
 
 def run_snorkel_pipeline():
     os.makedirs(OUTPUT_FILE.parent, exist_ok=True)
@@ -628,7 +549,7 @@ def run_snorkel_pipeline():
     else:
         df = pd.read_csv(INPUT_FILE)
 
-    # Strip illegal Excel chars
+
     ILLEGAL_RE = re.compile(r'[\000-\010]|[\013-\014]|[\016-\037]')
     df['body']    = df['body'].apply(lambda x: ILLEGAL_RE.sub("", str(x)))
     df['subject'] = df['subject'].apply(lambda x: ILLEGAL_RE.sub("", str(x)))
@@ -637,7 +558,7 @@ def run_snorkel_pipeline():
     print(f"Building LF matrix with {len(ALL_LF_FUNCTIONS)} labeling functions...")
 
     if SNORKEL_AVAILABLE:
-        # ── Snorkel path ──
+
         snorkel_lfs = [
             LabelingFunction(name=fn.__name__, f=fn)
             for fn in ALL_LF_FUNCTIONS
@@ -653,10 +574,7 @@ def run_snorkel_pipeline():
             coverage = (col != ABSTAIN_L).mean() * 100
             print(f"  {name:<38} {coverage:>7.1f}%  {(col==URGENT_L).sum():>6}  {(col==ACTION_L).sum():>6}  {(col==INFORMATION_L).sum():>6}")
 
-        # ── Compute class balance from gold labels (if available) ──
-        # Providing class_balance helps Snorkel calibrate probabilities correctly.
-        # Without it, Snorkel assumes uniform priors which badly skews predictions
-        # when classes are imbalanced.
+
         class_balance = None
         if 'Final Label' in df.columns:
             label_counts = df['Final Label'].str.strip().str.upper().value_counts()
@@ -670,8 +588,7 @@ def run_snorkel_pipeline():
             print(f"\nClass balance from gold labels:")
             print(f"  URGENT={class_balance[0]:.3f}  ACTION={class_balance[1]:.3f}  INFO={class_balance[2]:.3f}")
 
-        # ── Also extract gold labels for LabelModel (improves accuracy significantly) ──
-        # Snorkel can use gold labels during training to anchor its learned weights.
+        
         Y_gold = None
         if 'Final Label' in df.columns:
             y_map = {'URGENT': URGENT_L, 'ACTION': ACTION_L,
@@ -688,7 +605,7 @@ def run_snorkel_pipeline():
 
         label_model = LabelModel(cardinality=3, verbose=True)
 
-        # Fit with class balance prior — critical for imbalanced datasets
+
         fit_kwargs = dict(
             L_train=L_matrix,
             n_epochs=500,
@@ -706,7 +623,7 @@ def run_snorkel_pipeline():
         method_label = "Snorkel LabelModel (43 LFs + class balance prior)"
 
     else:
-        # ── Fallback majority vote path ──
+
         print("Snorkel not installed — using weighted majority vote fallback.")
         print("Run:  pip install snorkel   for best results.\n")
         L_matrix    = build_lf_matrix_manually(df)
@@ -715,10 +632,10 @@ def run_snorkel_pipeline():
         probs       = None
         method_label = "Majority Vote (fallback — install snorkel for LabelModel)"
 
-    # Map integer predictions back to string labels
+
     df['Predicted Label'] = [CLASS_NAMES[p] for p in predictions]
 
-    # ── Accuracy report (exclude TIEs) ──
+
     eval_df   = df[df['Final Label'].str.strip().str.upper() != "TIE"].copy()
     actual    = eval_df['Final Label'].str.strip().str.upper()
     predicted = eval_df['Predicted Label'].str.strip().str.upper()
@@ -733,7 +650,7 @@ def run_snorkel_pipeline():
     print(f"  Incorrect       : {total - correct}")
     print(f"  Accuracy        : {(correct/total)*100:.2f}%")
 
-    # Per-class breakdown
+
     for cls in ["URGENT", "ACTION", "INFORMATION"]:
         mask     = actual == cls
         cls_corr = ((actual == predicted) & mask).sum()
@@ -741,7 +658,7 @@ def run_snorkel_pipeline():
         print(f"  {cls:<14}: {cls_corr}/{cls_tot} ({(cls_corr/cls_tot*100) if cls_tot else 0:.1f}%)")
     print("="*55)
 
-    # ── Add LF matrix + probabilities to output ──
+
     lf_df = pd.DataFrame(L_matrix, columns=LF_NAMES)
     label_remap = {URGENT_L: "URGENT", ACTION_L: "ACTION",
                    INFORMATION_L: "INFORMATION", ABSTAIN_L: "abstain"}
@@ -754,7 +671,7 @@ def run_snorkel_pipeline():
     else:
         final_df = pd.concat([df, lf_df], axis=1)
 
-    # ── Excel export ──
+
     writer    = pd.ExcelWriter(OUTPUT_FILE, engine='xlsxwriter')
     workbook  = writer.book
 
@@ -775,7 +692,7 @@ def run_snorkel_pipeline():
         fmt = fmt_correct if actual_val == pred_val else fmt_incorrect
         worksheet.write(row_idx, col_pred, final_df.iloc[row_idx-1, col_pred], fmt)
 
-    # ── LF Coverage summary sheet ──
+
     coverage_data = []
     for i, name in enumerate(LF_NAMES):
         col = L_matrix[:, i]

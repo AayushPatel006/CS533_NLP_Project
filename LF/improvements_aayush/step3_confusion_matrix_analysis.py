@@ -1,29 +1,13 @@
-"""
-STEP 3: CONFUSION MATRIX + PER-CLASS ERROR ANALYSIS
-=====================================================
-Run this AFTER step1_step2_weighted_lfs.py to understand exactly WHERE
-your errors are clustering. This tells you which new LFs to write next.
-
-Outputs:
-  1. Terminal: confusion matrix + top 10 misclassified emails per class
-  2. Excel:    full error audit spreadsheet with mismatch type column
-"""
 
 import pandas as pd
 import re
 import os
 from pathlib import Path
 
-# ─────────────────────────────────────────────────────────────────────
-# IMPORT the predict function from your Step 1/2 file.
-# If running standalone, paste the predict_label function here instead.
-# ─────────────────────────────────────────────────────────────────────
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
-# We re-implement a minimal import shim so this file is self-contained.
-# Just point it at the same CSV and it re-runs predictions internally.
-# ─────────────────────────────────────────────────────────────────────
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INPUT_FILE = (
@@ -49,7 +33,7 @@ URGENT       = "URGENT"
 ACTION       = "ACTION"
 INFORMATION  = "INFORMATION"
 
-# ── Paste your helpers here (or import from step1_step2) ──────────────
+
 
 def normalize(text):
     if not text or not isinstance(text, str): return ""
@@ -68,9 +52,7 @@ def regex_match(text, patterns):
     return any(re.search(p, text) for p in patterns)
 
 
-# ─────────────────────────────────────────────────────────────────────
-# CONFUSION MATRIX BUILDER
-# ─────────────────────────────────────────────────────────────────────
+
 
 def build_confusion_matrix(actual_series, predicted_series, classes):
     """Returns a dict-of-dicts: matrix[actual][predicted] = count."""
@@ -111,9 +93,6 @@ def print_per_class_stats(matrix, classes):
     print("  " + "-"*40)
 
 
-# ─────────────────────────────────────────────────────────────────────
-# ERROR CATEGORISATION
-# ─────────────────────────────────────────────────────────────────────
 
 def categorize_mismatch(actual, predicted):
     """Returns a human-readable mismatch label."""
@@ -128,16 +107,13 @@ def get_top_errors(df, actual_col, predicted_col, actual_class, predicted_as, n=
         (df[predicted_col].str.strip().str.upper() == predicted_as)
     )
     subset = df[mask].copy()
-    # Truncate body for readability in terminal
+
     subset['body_preview'] = subset['body'].apply(
         lambda x: str(x)[:200].replace('\n', ' ') + "..."
     )
     return subset[['subject', 'body_preview']].head(n)
 
 
-# ─────────────────────────────────────────────────────────────────────
-# MAIN ANALYSIS RUNNER
-# ─────────────────────────────────────────────────────────────────────
 
 def run_error_analysis():
     os.makedirs(OUTPUT_FILE.parent, exist_ok=True)
@@ -149,7 +125,7 @@ def run_error_analysis():
         print(f"Error: Weighted LF results not found at {INPUT_FILE}")
         return
 
-    # ── Filter TIEs ──
+
     df = df[df['Final Label'].str.strip().str.upper() != "TIE"].copy()
     df['_actual']    = df['Final Label'].str.strip().str.upper()
     df['_predicted'] = df['Predicted Label'].str.strip().str.upper()
@@ -160,7 +136,7 @@ def run_error_analysis():
     classes = [URGENT, ACTION, INFORMATION]
     matrix  = build_confusion_matrix(df['_actual'], df['_predicted'], classes)
 
-    # ── Terminal output ──
+
     correct = (df['_actual'] == df['_predicted']).sum()
     total   = len(df)
     print("\n" + "="*60)
@@ -168,7 +144,7 @@ def run_error_analysis():
     print_confusion_matrix(matrix, classes)
     print_per_class_stats(matrix, classes)
 
-    # ── Top error pairs ──
+
     error_pairs = [
         (URGENT,      ACTION),
         (URGENT,      INFORMATION),
@@ -192,17 +168,17 @@ def run_error_analysis():
             print(f"      Body: {err_row['body_preview']}")
             print()
 
-    # ── Save full error audit to Excel ──
+
     error_df = df[df['_actual'] != df['_predicted']].copy()
     error_df = error_df[['subject', 'body', 'Final Label', 'Predicted Label', 'Mismatch Type']]
 
     writer    = pd.ExcelWriter(OUTPUT_FILE, engine='xlsxwriter')
     workbook  = writer.book
 
-    # Sheet 1: All errors
+
     error_df.to_excel(writer, index=False, sheet_name='All_Errors')
 
-    # Sheet 2: Confusion matrix as a table
+
     matrix_rows = []
     for actual_cls in classes:
         row = {'Actual \\ Predicted': actual_cls}
@@ -212,7 +188,7 @@ def run_error_analysis():
     matrix_df = pd.DataFrame(matrix_rows)
     matrix_df.to_excel(writer, index=False, sheet_name='Confusion_Matrix')
 
-    # Sheet 3: One tab per error pair
+
     for actual_cls, predicted_cls in error_pairs:
         subset = error_df[
             (error_df['Final Label'].str.strip().str.upper() == actual_cls) &
@@ -222,7 +198,7 @@ def run_error_analysis():
             sheet_name = f"{actual_cls[:3]}_as_{predicted_cls[:3]}"
             subset.to_excel(writer, index=False, sheet_name=sheet_name)
 
-    # Colour the Mismatch Type column on the All_Errors sheet
+
     worksheet = writer.sheets['All_Errors']
     red_fmt   = workbook.add_format({'bg_color': '#FFC7CE', 'font_color': '#9C0006'})
     mismatch_col = error_df.columns.get_loc('Mismatch Type')

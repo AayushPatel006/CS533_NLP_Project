@@ -23,8 +23,7 @@ def has_action_and_time(text):
     
     return contains_any(text, action_terms) and contains_any(text, time_terms)
 
-# URGENCY LFs
-# LF_U1: Strong Urgency (High Precision)
+
 def lf_u1_strong_urgency(text):
     text = normalize(text)
     
@@ -35,7 +34,7 @@ def lf_u1_strong_urgency(text):
     
     return 1 if contains_any(text, keywords) else ABSTAIN
 
-# LF_U2: Deadline Detection (Robust)
+
 def lf_u2_deadline(text):
     text = normalize(text)
     
@@ -50,7 +49,7 @@ def lf_u2_deadline(text):
     
     return 1 if regex_match(text, patterns) else ABSTAIN
 
-# LF_U3: Temporal Pressure (Contextual)
+
 def lf_u3_temporal(text):
     text = normalize(text)
     
@@ -58,13 +57,13 @@ def lf_u3_temporal(text):
     
     return 1 if contains_any(text, terms) else ABSTAIN
 
-# LF_U4: Urgent + Action (Composite LF)
+
 def lf_u4_action_time_combo(text):
     text = normalize(text)
     
     return 1 if has_action_and_time(text) else ABSTAIN
 
-# LF_U5: Scheduling Urgency
+
 def lf_u5_scheduling(text):
     text = normalize(text)
     
@@ -74,7 +73,7 @@ def lf_u5_scheduling(text):
     
     return ABSTAIN
 
-# LF_U6: Domain Criticality
+
 def lf_u6_domain(text):
     text = normalize(text)
     
@@ -85,8 +84,7 @@ def lf_u6_domain(text):
     
     return 1 if contains_any(text, domains) else ABSTAIN
 
-# 3. ACTION LFs (Advanced)
-# LF_A1: Direct Request
+
 def lf_a1_request(text):
     text = normalize(text)
     
@@ -98,7 +96,7 @@ def lf_a1_request(text):
     
     return 1 if contains_any(text, phrases) else ABSTAIN
 
-# LF_A2: Question Detection (Improved)
+
 def lf_a2_question(text):
     text = normalize(text)
     
@@ -112,7 +110,7 @@ def lf_a2_question(text):
     
     return 1 if any(text.startswith(s) for s in starters) else ABSTAIN
 
-# LF_A3: Action Verbs (Contextual)
+
 def lf_a3_action_verbs(text):
     text = normalize(text)
     
@@ -124,7 +122,7 @@ def lf_a3_action_verbs(text):
     
     return 1 if contains_any(text, verbs) else ABSTAIN
 
-# LF_A4: Follow-up Signals
+
 def lf_a4_followup(text):
     text = normalize(text)
     
@@ -135,7 +133,7 @@ def lf_a4_followup(text):
     
     return 1 if contains_any(text, phrases) else ABSTAIN
 
-# LF_A5: Approval Seeking
+
 def lf_a5_approval(text):
     text = normalize(text)
     
@@ -148,8 +146,7 @@ def lf_a5_approval(text):
     
     return 1 if contains_any(text, phrases) else ABSTAIN
 
-# 4. INFORMATION LFs (Advanced)
-# LF_I1: Explicit Info
+
 def lf_i1_info(text):
     text = normalize(text)
     
@@ -160,7 +157,7 @@ def lf_i1_info(text):
     
     return 1 if contains_any(text, keywords) else ABSTAIN
 
-# LF_I2: Acknowledgment
+
 def lf_i2_ack(text):
     text = normalize(text)
     
@@ -171,7 +168,7 @@ def lf_i2_ack(text):
     
     return 1 if contains_any(text, phrases) else ABSTAIN
 
-# LF_I3: Broadcast Detection
+
 def lf_i3_broadcast(text):
     text = normalize(text)
     
@@ -184,7 +181,7 @@ def lf_i3_broadcast(text):
     
     return 1 if contains_any(text, phrases) else ABSTAIN
 
-# LF_I4: Attachment Only (Weak but Useful)
+
 def lf_i4_attachment(text):
     text = normalize(text)
     
@@ -197,7 +194,7 @@ def lf_i4_attachment(text):
 
 
 
-# 5. Applying All LFs
+
 LFs = [
     lf_u1_strong_urgency,
     lf_u2_deadline,
@@ -218,13 +215,13 @@ LFs = [
     lf_i4_attachment
 ]
 
-# Apply to Dataset
+
 
 def apply_lfs(text):
     results = [lf(text) for lf in LFs]
     return results
 
-# Convert LF Outputs → Final Label
+
 def assign_label(text):
     text = normalize(text)
     
