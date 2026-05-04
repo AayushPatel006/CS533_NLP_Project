@@ -53,6 +53,14 @@ pip install -r LF/improvements_aayush/requirements.txt
 This installs the packages needed for the labeling-function pipeline, Snorkel,
 TF-IDF baseline, and transformer experiments.
 
+If virtual-environment creation fails on your machine, you can skip the
+`.venv` step and install the dependencies directly into your active Python
+environment:
+
+```bash
+pip install -r LF/improvements_aayush/requirements.txt
+```
+
 ### Step 3: Run the weighted labeling-function pipeline
 
 ```bash
