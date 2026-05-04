@@ -75,6 +75,18 @@ This trains TF-IDF and BERT with a small synthetic `URGENT` set added to the
 training folds only, while still evaluating on the original gold-labelled
 emails.
 
+Stage 3 weak supervision scaling:
+
+```bash
+python LF/improvements_aayush/stage3_prepare_10k_structured_dataset.py
+python LF/improvements_aayush/stage3_generate_weak_labels_10k.py
+python LF/improvements_aayush/stage3_weak_pretrain_then_gold_finetune.py
+```
+
+This branch uses 10,000 raw Enron emails for weak-label generation, then
+pretrains BERT on Snorkel soft labels before fine-tuning on the 294 gold
+emails.
+
 ## Supporting Data Files
 
 - Gold dataset: `dataset/Golden Dataset - 300 rows refined.xlsx`

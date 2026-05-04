@@ -1,19 +1,4 @@
-"""
-STEP 5B: SYNTHETIC URGENT AUGMENTATION EXPERIMENT
-=================================================
-Goal:
-  Add a small synthetic URGENT-only training set to address class imbalance,
-  while keeping evaluation strictly on the original gold-labelled emails.
 
-Method:
-  - Load the same 294 gold-labelled emails used in Step 5
-  - Load a separate synthetic URGENT dataset
-  - For each CV fold, append synthetic URGENT emails to the TRAIN split only
-  - Evaluate only on the untouched real validation fold
-
-This keeps the comparison honest while testing whether targeted augmentation
-helps the rare URGENT class.
-"""
 
 import json
 import os
