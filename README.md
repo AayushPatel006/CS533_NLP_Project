@@ -26,11 +26,25 @@ The repository includes the following components:
 ## How to Run the Project
 
 Please run all commands from the repository root.
-We recommend creating a virtual environment first, then installing the dependencies with:
+We recommend creating a virtual environment first.
 
+### Step 1: Create and activate a virtual environment
 
+On macOS/Linux:
 
-### Step 1: Install dependencies
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+On Windows:
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+### Step 2: Install dependencies
 
 ```bash
 pip install -r LF/improvements_aayush/requirements.txt
@@ -39,7 +53,7 @@ pip install -r LF/improvements_aayush/requirements.txt
 This installs the packages needed for the labeling-function pipeline, Snorkel,
 TF-IDF baseline, and transformer experiments.
 
-### Step 2: Run the weighted labeling-function pipeline
+### Step 3: Run the weighted labeling-function pipeline
 
 ```bash
 python LF/improvements_aayush/step1_step2_weighted_lfs_round_3.py
@@ -52,7 +66,7 @@ Output:
 
 - `LF/improvements_aayush/results/Weighted_LF/Batch_Weighted_LF_Results_round_3_portable.xlsx`
 
-### Step 3: Run the confusion-matrix error analysis
+### Step 4: Run the confusion-matrix error analysis
 
 ```bash
 python LF/improvements_aayush/step3_confusion_matrix_analysis.py
@@ -65,7 +79,7 @@ Output:
 
 - `LF/improvements_aayush/results/Step3_Error_Analysis/Step3_Error_Analysis_portable.xlsx`
 
-### Step 4: Run the Snorkel label model
+### Step 5: Run the Snorkel label model
 
 ```bash
 python LF/improvements_aayush/step4_snorkel_label_model.py
@@ -78,7 +92,7 @@ Output:
 
 - `LF/improvements_aayush/results/Step4_Snorkel_Results/Step4_Snorkel_Results_portable.xlsx`
 
-### Step 5: Run the gold-label supervised baselines
+### Step 6: Run the gold-label supervised baselines
 
 ```bash
 python LF/improvements_aayush/step5_bert_classifier.py
@@ -94,7 +108,7 @@ Outputs:
 - `LF/improvements_aayush/results/Step5_BERT/Step5_BERT_Results_portable.xlsx`
 - `LF/improvements_aayush/results/bert_model/`
 
-### Step 6: Run the weak-supervision scaling pipeline
+### Step 7: Run the weak-supervision scaling pipeline
 
 Run the following three scripts in order:
 
