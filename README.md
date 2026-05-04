@@ -1,6 +1,7 @@
 # CS533 NLP Project
 
-This repository already contains most of the project pipeline. The main thing missing was a clean, portable way for all three teammates to run it from the repo instead of from one person's desktop paths.
+This repository contains the code, data pipeline, and model experiments used for our email priority classification project.
+
 
 ## Project Goal
 
@@ -10,72 +11,92 @@ Classify Enron emails into:
 - `ACTION`
 - `INFORMATION`
 
-The repo currently supports:
+The repository includes the following components:
 
-1. data cleaning / structuring
-2. weak supervision with labeling functions
-3. weighted LF evaluation
-4. confusion-matrix error analysis
-5. Snorkel label model
-6. TF-IDF baseline and BERT evaluation on gold labels
+1. data preparation and email structuring
+2. weighted labeling-function pipelines across multiple rounds
+3. confusion-matrix and error analysis
+4. Snorkel-based weak supervision
+5. TF-IDF + Logistic Regression baseline
+6. gold-only BERT evaluation
+7. large-scale weak-label generation on 10,000 Enron emails
+8. weak-pretraining plus gold fine-tuning for the final BERT model
+9. saved result files and trained model outputs
 
-## Recommended Final Pipeline
+## How to Run the Project
 
-Run these files in order from the repository root:
+Please run all commands from the repository root.
+We recommend creating a virtual environment first, then installing the dependencies with:
+
+
+
+### Step 1: Install dependencies
 
 ```bash
 pip install -r LF/improvements_aayush/requirements.txt
 ```
 
-Step 1:
+This installs the packages needed for the labeling-function pipeline, Snorkel,
+TF-IDF baseline, and transformer experiments.
+
+### Step 2: Run the weighted labeling-function pipeline
 
 ```bash
 python LF/improvements_aayush/step1_step2_weighted_lfs_round_3.py
 ```
 
-Output:
-`LF/improvements_aayush/results/Weighted_LF/Batch_Weighted_LF_Results_round_3_portable.xlsx`
+This script applies the final weighted labeling-function system and saves the
+predicted labels and class scores.
 
-Step 2:
+Output:
+
+- `LF/improvements_aayush/results/Weighted_LF/Batch_Weighted_LF_Results_round_3_portable.xlsx`
+
+### Step 3: Run the confusion-matrix error analysis
 
 ```bash
 python LF/improvements_aayush/step3_confusion_matrix_analysis.py
 ```
 
-Output:
-`LF/improvements_aayush/results/Step3_Error_Analysis/Step3_Error_Analysis_portable.xlsx`
+This script reads the weighted LF output from Step 2, computes the confusion
+matrix, and saves the detailed error analysis.
 
-Step 3:
+Output:
+
+- `LF/improvements_aayush/results/Step3_Error_Analysis/Step3_Error_Analysis_portable.xlsx`
+
+### Step 4: Run the Snorkel label model
 
 ```bash
 python LF/improvements_aayush/step4_snorkel_label_model.py
 ```
 
-Output:
-`LF/improvements_aayush/results/Step4_Snorkel_Results/Step4_Snorkel_Results_portable.xlsx`
+This script applies Snorkel to the labeling-function outputs and writes weak
+labels and class probabilities.
 
-Step 4:
+Output:
+
+- `LF/improvements_aayush/results/Step4_Snorkel_Results/Step4_Snorkel_Results_portable.xlsx`
+
+### Step 5: Run the gold-label supervised baselines
 
 ```bash
 python LF/improvements_aayush/step5_bert_classifier.py
 ```
+
+This script evaluates:
+
+- TF-IDF + Logistic Regression
+- gold-only BERT
 
 Outputs:
 
 - `LF/improvements_aayush/results/Step5_BERT/Step5_BERT_Results_portable.xlsx`
 - `LF/improvements_aayush/results/bert_model/`
 
-Optional augmentation experiment:
+### Step 6: Run the weak-supervision scaling pipeline
 
-```bash
-python LF/improvements_aayush/step5_urgent_augmentation_experiment.py
-```
-
-This trains TF-IDF and BERT with a small synthetic `URGENT` set added to the
-training folds only, while still evaluating on the original gold-labelled
-emails.
-
-Stage 3 weak supervision scaling:
+Run the following three scripts in order:
 
 ```bash
 python LF/improvements_aayush/stage3_prepare_10k_structured_dataset.py
@@ -83,23 +104,53 @@ python LF/improvements_aayush/stage3_generate_weak_labels_10k.py
 python LF/improvements_aayush/stage3_weak_pretrain_then_gold_finetune.py
 ```
 
-This branch uses 10,000 raw Enron emails for weak-label generation, then
-pretrains BERT on Snorkel soft labels before fine-tuning on the 294 gold
-emails.
+These scripts:
 
-## Supporting Data Files
+1. prepare the structured 10,000-email Enron sample,
+2. generate weak labels and Snorkel probabilities on that sample,
+3. pretrain BERT on the weak labels and then fine-tune it on the 294-email gold set.
 
-- Gold dataset: `dataset/Golden Dataset - 300 rows refined.xlsx`
-- Example structured emails: `cleaning/enron_structured_first_60_rows.jsonl`
+Outputs:
 
-## Team Split Suggestion
+- `LF/improvements_aayush/results/Weak_Labels_10k/Round2_Weak_Labels_10k.csv`
+- `LF/improvements_aayush/results/Weak_Labels_10k/Snorkel_Weak_Labels_10k.csv`
+- `LF/improvements_aayush/results/Stage3_Weak_Pretrain/Stage3_Weak_Pretrain_Results.xlsx`
+- `LF/improvements_aayush/results/bert_model_weak_pretrained/`
 
-- Teammate 1: Run Steps 1 to 3 and summarize LF behavior, confusion matrix, and weak-supervision results.
-- Teammate 2: Run Step 4 and compare TF-IDF vs BERT using the gold labels.
-- Teammate 3: Write the final report and slides using the generated Excel outputs, charts, and error examples.
+### Optional: Synthetic urgent augmentation experiment
 
-## Notes
+```bash
+python LF/improvements_aayush/step5_urgent_augmentation_experiment.py
+```
 
-- The BERT script trains on gold labels, not Snorkel soft labels.
-- `weak_labels/weak_labeling_func.py` now reads the sample JSONL already in the repo.
-- Some older files in `LF/` still contain personal absolute paths because they appear to be earlier experiments; the portable pipeline above is the one to use for submission/demo work.
+This script adds a small synthetic `URGENT` set to the training folds only and
+evaluates TF-IDF and BERT on the original gold-labelled data.
+
+Output:
+
+- `LF/improvements_aayush/results/Step5_BERT/Step5_Urgent_Augmentation_Results.xlsx`
+
+## Required Data Files
+
+The following files are needed for the main pipeline:
+
+- `dataset/Golden Dataset - 300 rows refined.xlsx`
+- `dataset/emails_10k_sample.csv`
+- `dataset/emails_10k_structured.csv`
+
+## Main Output Files
+
+The most important output files are:
+
+- `LF/improvements_aayush/results/Weighted_LF/Batch_Weighted_LF_Results_round_3_portable.xlsx`
+- `LF/improvements_aayush/results/Step3_Error_Analysis/Step3_Error_Analysis_portable.xlsx`
+- `LF/improvements_aayush/results/Step4_Snorkel_Results/Step4_Snorkel_Results_portable.xlsx`
+- `LF/improvements_aayush/results/Step5_BERT/Step5_BERT_Results_portable.xlsx`
+- `LF/improvements_aayush/results/Stage3_Weak_Pretrain/Stage3_Weak_Pretrain_Results.xlsx`
+
+## Saved Models
+
+The repository also includes saved model folders:
+
+- `LF/improvements_aayush/results/bert_model/`
+- `LF/improvements_aayush/results/bert_model_weak_pretrained/`
