@@ -8,9 +8,6 @@ INPUT_FILE = "../dataset/emails.csv"
 OUTPUT_FILE = "./enron_structured.json"
 
 
-# ----------------------------
-# Helper Functions
-# ----------------------------
 
 def extract_path_metadata(file_path):
     parts = file_path.split("/")
@@ -92,9 +89,6 @@ def extract_attachments(msg):
     return attachments
 
 
-# ----------------------------
-# Main Pipeline (Streaming)
-# ----------------------------
 
 df = pd.read_csv(INPUT_FILE)
 total = len(df)
