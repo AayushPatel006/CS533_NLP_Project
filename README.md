@@ -170,6 +170,24 @@ The most important output files are:
 - `LF/improvements_aayush/results/Step5_BERT/Step5_BERT_Results_portable.xlsx`
 - `LF/improvements_aayush/results/Stage3_Weak_Pretrain/Stage3_Weak_Pretrain_Results.xlsx`
 
+
+## Separate DistilBERT Experiment
+
+This repository also includes a separate DistilBERT experiment based on a different manually verified dataset:
+
+- `BART_Verified_Gold_Standard-1.xlsx`
+- `DistilBert_Seperate_Exp.py`
+
+This experiment is separate from the main Enron weak-supervision pipeline. It uses the verified gold-standard dataset, combines email subject and body into a single text field, and trains a DistilBERT classifier with weighted cross-entropy loss.
+
+### How to run the separate experiment
+
+Run from the repository root:
+
+```bash
+python DistilBert_Seperate_Exp.py
+
+
 ## Saved Models
 
 The repository also includes saved model folders:
